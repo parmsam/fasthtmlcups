@@ -1,5 +1,5 @@
 ---
-title: FastHTML on HuggingFace!
+title: FastHTMLCups
 emoji: 🤗
 colorFrom: indigo
 colorTo: green
