@@ -2,6 +2,7 @@ from fasthtml.common import *
 from monsterui.all import *
 import uuid
 import time
+import os
 
 # Shared state (per-process, fine for a simple demo)
 # We no longer keep a running cup_counts (avoids drift). Compute counts from student_cups + last_seen.
@@ -11,11 +12,30 @@ sessions_seen = set()  # track unique sessions that visited the student view
 # heartbeat: last-seen timestamps for sessions that currently have the student view open
 last_seen = {}  # {session_id: timestamp}
 ACTIVE_TIMEOUT = 60 * 3  # seconds considered "active"
+STALE_TIMEOUT = 60 * 60 * 24  # 24 hours - prune sessions older than this
 
 # Choose a theme color (blue, green, red, etc)
 hdrs = Theme.blue.headers()
 
-app, rt = fast_app(secret_key="this-is-the-way", hdrs=hdrs)
+app, rt = fast_app(secret_key=os.environ.get('FASTHTMLCUPS_SECRET', 'this-is-the-way'), hdrs=hdrs)
+
+
+def prune_stale_sessions():
+    """
+    Remove session ids from last_seen and student_cups if last_seen is older than STALE_TIMEOUT.
+    Also remove from sessions_seen to bound total_seen.
+    NOTE: This changes the semantics of 'total_seen' to 'currently tracked unique visitors'
+    rather than all-time unique visitors.
+    """
+    now = time.time()
+    # Compute stale sessions once per call
+    stale_sessions = [sid for sid, ts in last_seen.items() if now - ts > STALE_TIMEOUT]
+    
+    for sid in stale_sessions:
+        # Remove from all tracking structures
+        last_seen.pop(sid, None)
+        student_cups.pop(sid, None)
+        sessions_seen.discard(sid)
 
 
 @rt
@@ -62,12 +82,17 @@ def select_cup(session, color: str):
     # record seen even if they jumped straight to select endpoint
     sessions_seen.add(sid)
 
+    # Validate input - only accept valid colors
+    valid_colors = {'green', 'yellow', 'red'}
+    if color not in valid_colors:
+        return Div("Invalid color selection. Please choose green, yellow, or red.")
+    
     # Just record this session's current selection.
     # Don't maintain a separate running counter.
     student_cups[sid] = color
 
     # Return a small confirmation to be shown in #dest
-    return f"You selected a {Strong(color)} cup."
+    return Div("You selected a ", Strong(color.capitalize()), " cup.")
 
 
 @rt("/teacher")
@@ -80,6 +105,9 @@ def teacher():
 
 @rt
 def chart():
+    # Prune stale sessions opportunistically
+    prune_stale_sessions()
+    
     # total seen (visited) and active (currently have student view open)
     total_seen = len(sessions_seen)
     now = time.time()
@@ -132,6 +160,9 @@ def cups_svg(session):
     Each cup has its selection button directly underneath.
     The selected cup is filled with its color; others are transparent.
     """
+    # Prune stale sessions opportunistically
+    prune_stale_sessions()
+    
     # ensure a stable session id and record heartbeat (this endpoint is polled every 1s)
     sid = session.setdefault("id", str(uuid.uuid4()))
     last_seen[sid] = time.time()
