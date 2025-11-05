@@ -62,8 +62,8 @@ def select_cup(session, color: str):
     # record seen even if they jumped straight to select endpoint
     sessions_seen.add(sid)
 
-    # Just record this session's current selection. Don't maintain a separate running counter.
-    previous_color = student_cups.get(sid)
+    # Just record this session's current selection.
+    # Don't maintain a separate running counter.
     student_cups[sid] = color
 
     # Return a small confirmation to be shown in #dest
