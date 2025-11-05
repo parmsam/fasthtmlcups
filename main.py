@@ -13,6 +13,7 @@ sessions_seen = set()  # track unique sessions that visited the student view
 last_seen = {}  # {session_id: timestamp}
 ACTIVE_TIMEOUT = 60 * 3  # seconds considered "active"
 STALE_TIMEOUT = 60 * 60 * 24  # 24 hours - prune sessions older than this
+last_prune_time = 0  # Track when we last pruned to avoid excessive pruning
 
 # Choose a theme color (blue, green, red, etc)
 hdrs = Theme.blue.headers()
@@ -27,7 +28,15 @@ def prune_stale_sessions():
     NOTE: This changes the semantics of 'total_seen' to 'currently tracked unique visitors'
     rather than all-time unique visitors.
     """
+    global last_prune_time
     now = time.time()
+    
+    # Throttle: only prune if it's been at least 5 minutes since last prune
+    if now - last_prune_time < 300:  # 5 minutes
+        return
+    
+    last_prune_time = now
+    
     # Compute stale sessions once per call
     stale_sessions = [sid for sid, ts in last_seen.items() if now - ts > STALE_TIMEOUT]
     

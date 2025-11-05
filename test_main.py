@@ -3,6 +3,7 @@ Tests for main.py safety improvements
 """
 import time
 from main import prune_stale_sessions, student_cups, sessions_seen, last_seen, STALE_TIMEOUT
+import main
 
 
 def test_prune_stale_sessions():
@@ -11,6 +12,9 @@ def test_prune_stale_sessions():
     student_cups.clear()
     sessions_seen.clear()
     last_seen.clear()
+    
+    # Reset throttle to allow immediate pruning
+    main.last_prune_time = 0
     
     # Add some sessions
     now = time.time()
@@ -68,6 +72,9 @@ def test_prune_empty_state():
     sessions_seen.clear()
     last_seen.clear()
     
+    # Reset throttle to allow immediate pruning
+    main.last_prune_time = 0
+    
     # Should not crash on empty state
     prune_stale_sessions()
     
@@ -83,6 +90,9 @@ def test_prune_no_stale_sessions():
     student_cups.clear()
     sessions_seen.clear()
     last_seen.clear()
+    
+    # Reset throttle to allow immediate pruning
+    main.last_prune_time = 0
     
     now = time.time()
     session1 = "test-session-1"
@@ -108,8 +118,49 @@ def test_prune_no_stale_sessions():
     print("✓ test_prune_no_stale_sessions passed")
 
 
+def test_prune_throttling():
+    """Test that pruning is throttled to avoid excessive calls"""
+    student_cups.clear()
+    sessions_seen.clear()
+    last_seen.clear()
+    
+    # Reset throttle
+    main.last_prune_time = 0
+    
+    # Add a stale session
+    now = time.time()
+    session1 = "test-session-stale"
+    last_seen[session1] = now - STALE_TIMEOUT - 100
+    student_cups[session1] = "green"
+    sessions_seen.add(session1)
+    
+    # First call should prune
+    prune_stale_sessions()
+    assert session1 not in last_seen
+    
+    # Add another stale session
+    session2 = "test-session-stale-2"
+    last_seen[session2] = now - STALE_TIMEOUT - 100
+    student_cups[session2] = "yellow"
+    sessions_seen.add(session2)
+    
+    # Immediate second call should NOT prune (throttled)
+    prune_stale_sessions()
+    assert session2 in last_seen  # Still there due to throttling
+    
+    # Simulate time passing (5+ minutes)
+    main.last_prune_time = now - 301
+    
+    # Now it should prune
+    prune_stale_sessions()
+    assert session2 not in last_seen
+    
+    print("✓ test_prune_throttling passed")
+
+
 if __name__ == "__main__":
     test_prune_stale_sessions()
     test_prune_empty_state()
     test_prune_no_stale_sessions()
+    test_prune_throttling()
     print("\n✅ All tests passed!")
