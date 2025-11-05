@@ -1,6 +1,6 @@
 ---
 title: FastHTMLCups
-emoji: 🤗
+emoji: 🥤
 colorFrom: indigo
 colorTo: green
 sdk: docker
