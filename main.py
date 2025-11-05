@@ -12,7 +12,7 @@ sessions_seen = set()  # track unique sessions that visited the student view
 # heartbeat: last-seen timestamps for sessions that currently have the student view open
 last_seen = {}  # {session_id: timestamp}
 ACTIVE_TIMEOUT = 60 * 3  # seconds considered "active"
-STALE_TIMEOUT = 60 * 60 * 24  # 24 hours - prune sessions older than this
+STALE_TIMEOUT = 60 * 60 * 1  # 1 hour - prune sessions older than this
 last_prune_time = 0  # Track when we last pruned to avoid excessive pruning
 
 # Choose a theme color (blue, green, red, etc)
