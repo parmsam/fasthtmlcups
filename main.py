@@ -40,9 +40,11 @@ def index(session):
             Br(),
             # selection text target
             Div(id="dest", hx_get="/current_selection", hx_trigger="load"),
+            Br(),
             # SVG panel that will be replaced by /cups_svg (updates based on session)
             Div(id="cups", hx_get="/cups_svg", hx_trigger="load, every 1s"),
-            A("Teacher View", href="/teacher")
+            Br(),
+            A("Teacher View", href="/teacher", cls="uk-link uk-link-heading"),
         )
     )
 
@@ -75,6 +77,7 @@ def teacher():
     return Titled(
         "Teacher View - FastHTMLCups",
         Div(id="chart-container", hx_get="/chart", hx_trigger="every 2s"),
+        A("Student View", href="/", cls="uk-link uk-link-heading"),
     )
 
 
